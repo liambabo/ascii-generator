@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Custom Text ASCII Generator</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-system,"Malgun Gothic","Apple SD Gothic Neo",sans-serif;}
+  .wrap{max-width:1140px;margin:0 auto;padding:28px 20px 60px;}
+  h2{font-size:20px;margin:0 0 4px}
+  p.sub{margin:0 0 22px;color:#666;font-size:13px}
+
+  .grid{display:grid;grid-template-columns:330px 1fr;gap:20px;align-items:start;}
+  @media (max-width:860px){.grid{grid-template-columns:1fr}}
+
+  .panel{border:1px solid #ccc;border-radius:6px;padding:16px;}
+  .panel + .panel{margin-top:16px}
+  .panel h3{font-size:12px;margin:0 0 14px;color:#888;text-transform:uppercase;letter-spacing:.04em}
+  .field{margin-bottom:14px}
+  .field:last-child{margin-bottom:0}
+  label.lbl{display:block;font-size:12px;color:#555;margin-bottom:6px;font-weight:600}
+  label.lbl span{color:#000;font-weight:700}
+
+  .dropzone{border:1px dashed #999;border-radius:6px;padding:18px 10px;text-align:center;cursor:pointer;font-size:13px;color:#444;}
+  .dropzone:hover, .dropzone.drag{border-color:#111;background:#f7f7f7}
+  input[type=file]{display:none}
+  .thumb{margin-top:8px;display:none;align-items:center;gap:8px;font-size:12px;color:#555}
+  .thumb img{width:30px;height:30px;object-fit:cover;border:1px solid #ccc}
+
+  select, input[type=text]{
+    width:100%;border:1px solid #bbb;color:#111;background:#fff;
+    font-size:14px;padding:7px 9px;border-radius:4px;outline:none;
+  }
+  select:focus, input[type=text]:focus{border-color:#111}
+  input[type=range]{width:100%}
+
+  .radio-row{display:flex;gap:14px;font-size:13px;flex-wrap:wrap}
+  .radio-row label{display:flex;align-items:center;gap:5px;cursor:pointer}
+
+  .color-row{display:flex;align-items:center;gap:10px;margin-top:8px}
+  input[type=color]{width:34px;height:28px;border:1px solid #bbb;border-radius:4px;padding:0;cursor:pointer}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;justify-content:center;width:100%;
+    background:#111;color:#fff;border:1px solid #111;padding:9px 12px;border-radius:5px;
+    font-size:13px;cursor:pointer;}
+  .btn:hover{background:#333}
+  .btn.ghost{background:#fff;color:#111;border:1px solid #999}
+  .btn.ghost:hover{border-color:#111;background:#f5f5f5}
+  .btn-row{display:flex;gap:8px}
+  .btn-row .btn{flex:1}
+
+  .bg-options{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+  .bg-opt{display:flex;align-items:center;gap:5px;font-size:12.5px;color:#333;cursor:pointer}
+
+  .output-box{border:1px solid #ccc;border-radius:6px;padding:14px;min-height:620px;display:flex;flex-direction:column;background:#fff}
+  .output-head{display:flex;justify-content:space-between;font-size:12px;color:#777;margin-bottom:8px}
+  .canvas-area{flex:1;border:1px solid #ddd;border-radius:4px;background:#fff;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;}
+  .canvas-area.empty{color:#999;font-size:13px}
+  #output{
+    color:#000;
+    font-family:monospace;
+    white-space:pre;
+    line-height:1;
+    transform-origin:center center;
+    user-select:text;
+  }
+  #output span{white-space:pre}
+  footer.note{margin-top:10px;font-size:11.5px;color:#888}
+  hr.sep{border:none;border-top:1px solid #eee;margin:14px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>원하는 글자로 ASCII 만들기</h2>
+  <p class="sub">이미지를 업로드하면 원하는 문자열이나 프리셋 문자 세트로 실시간 변환됩니다.</p>
+
+  <div class="grid">
+    <!-- LEFT: controls -->
+    <div>
+      <div class="panel">
+        <h3>이미지</h3>
+        <div class="field">
+          <div class="dropzone" id="dropzone">클릭하거나 이미지를 드래그하세요<br><span style="font-size:11px;color:#888">PNG(투명 배경 지원) · JPG · WEBP</span></div>
+          <input type="file" id="fileInput" accept="image/*">
+          <div class="thumb" id="thumb"><img id="thumbImg"><span id="thumbName"></span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>이미지 보정</h3>
+        <div class="field">
+          <label class="lbl">밝기 <span id="brightVal">0</span></label>
+          <input type="range" id="brightness" min="-100" max="100" value="0">
+        </div>
+        <div class="field">
+          <label class="lbl">대비 <span id="contrastVal">0</span></label>
+          <input type="range" id="contrast" min="-100" max="100" value="0">
+        </div>
+        <div class="field">
+          <label class="lbl">채도 <span id="saturationVal">100</span>%</label>
+          <input type="range" id="saturation" min="0" max="200" value="100">
+        </div>
+        <div class="field">
+          <label class="lbl">색조 <span id="hueVal">0</span>°</label>
+          <input type="range" id="hue" min="-180" max="180" value="0">
+        </div>
+        <div class="field">
+          <label class="lbl">그레이스케일 <span id="grayscaleVal">0</span>%</label>
+          <input type="range" id="grayscale" min="0" max="100" value="0">
+        </div>
+        <div class="field">
+          <label class="lbl">세피아 <span id="sepiaVal">0</span>%</label>
+          <input type="range" id="sepia" min="0" max="100" value="0">
+        </div>
+        <div class="field">
+          <label class="lbl">색 반전 <span id="invertVal">0</span>%</label>
+          <input type="range" id="invert" min="0" max="100" value="0">
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>ASCII 변환</h3>
+        <div class="field">
+          <label class="lbl">해상도(너비) <span id="resVal">100</span>칸</label>
+          <input type="range" id="resolution" min="20" max="300" value="100">
+        </div>
+        <div class="field">
+          <label class="lbl">ASCII 문자 세트</label>
+          <select id="gradientPreset">
+            <option value="custom" selected>직접 입력(기본)</option>
+            <option value="normal">일반 그라디언트</option>
+            <option value="minimal">미니멀</option>
+            <option value="numeric">숫자</option>
+            <option value="block">블록</option>
+            <option value="codepage">심볼</option>
+            <option value="mathsym">수학 기호</option>
+          </select>
+        </div>
+        <div class="field" id="customTextField">
+          <label class="lbl">사용할 문자열</label>
+          <input type="text" id="textInput" value="#@*.:" maxlength="40">
+        </div>
+        <div class="field" id="thresholdField">
+          <label class="lbl">임계값(밝기 기준) <span id="thresholdVal">128</span></label>
+          <input type="range" id="threshold" min="0" max="255" value="128">
+        </div>
+        <div class="field">
+          <label class="lbl">디더링</label>
+          <select id="dither">
+            <option value="none" selected>없음</option>
+            <option value="floyd">Floyd–Steinberg</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="lbl">여백 프레임 <span id="paddingVal">0</span>칸</label>
+          <input type="range" id="padding" min="0" max="10" value="0">
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>색상 모드</h3>
+        <div class="field">
+          <div class="radio-row">
+            <label><input type="radio" name="mode" value="mono" checked> 흑백</label>
+            <label><input type="radio" name="mode" value="color"> 컬러(원본)</label>
+            <label><input type="radio" name="mode" value="tint"> 팔레트 틴트</label>
+          </div>
+          <div id="tintRow" style="display:none;margin-top:8px">
+            <div class="color-row">
+              <span style="font-size:12.5px;color:#555">틴트 색상</span>
+              <input type="color" id="tintColor" value="#c0392b">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>내보내기</h3>
+        <div class="field">
+          <label class="lbl">PNG 배경</label>
+          <div class="bg-options">
+            <label class="bg-opt"><input type="radio" name="bg" value="white" checked> 흰색</label>
+            <label class="bg-opt"><input type="radio" name="bg" value="black"> 검은색</label>
+            <label class="bg-opt"><input type="radio" name="bg" value="transparent"> 투명</label>
+            <label class="bg-opt"><input type="radio" name="bg" value="custom"> 사용자 지정</label>
+          </div>
+          <input type="color" id="bgColor" value="#ffffff" style="display:none">
+        </div>
+        <div class="btn-row" style="margin-bottom:8px">
+          <button class="btn ghost" id="copyBtn">복사</button>
+          <button class="btn ghost" id="saveTxtBtn">TXT 저장</button>
+        </div>
+        <button class="btn" id="savePngBtn" style="margin-bottom:8px">PNG 저장 (원본 비율)</button>
+        <button class="btn ghost" id="resetBtn">초기화</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: output -->
+    <div class="output-box">
+      <div class="output-head"><span>미리보기</span><span id="zoomTag"></span></div>
+      <div class="canvas-area" id="canvasArea">
+        <div class="canvas-area empty" id="emptyMsg" style="position:static;border:none">이미지를 업로드하면 여기에 표시됩니다</div>
+        <pre id="output" style="display:none"></pre>
+      </div>
+      <footer class="note">해상도를 올려도 완성본이 이 칸 안에 맞춰 자동으로 축소/확대되어 항상 한눈에 보입니다. PNG 저장은 화면 미리보기와 동일한 글자 비율로 저장되어 눌리지 않습니다.</footer>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const thumb = document.getElementById('thumb');
+  const thumbImg = document.getElementById('thumbImg');
+  const thumbName = document.getElementById('thumbName');
+  const canvasArea = document.getElementById('canvasArea');
+  const output = document.getElementById('output');
+  const emptyMsg = document.getElementById('emptyMsg');
+  const zoomTag = document.getElementById('zoomTag');
+
+  const brightness = document.getElementById('brightness');
+  const contrast = document.getElementById('contrast');
+  const saturation = document.getElementById('saturation');
+  const hue = document.getElementById('hue');
+  const grayscale = document.getElementById('grayscale');
+  const sepia = document.getElementById('sepia');
+  const invert = document.getElementById('invert');
+  const resolution = document.getElementById('resolution');
+  const threshold = document.getElementById('threshold');
+  const paddingSlider = document.getElementById('padding');
+  const gradientPreset = document.getElementById('gradientPreset');
+  const ditherSelect = document.getElementById('dither');
+  const textInput = document.getElementById('textInput');
+  const customTextField = document.getElementById('customTextField');
+  const thresholdField = document.getElementById('thresholdField');
+  const tintRow = document.getElementById('tintRow');
+  const tintColor = document.getElementById('tintColor');
+  const bgColor = document.getElementById('bgColor');
+
+  const valSpans = {
+    brightness: document.getElementById('brightVal'),
+    contrast: document.getElementById('contrastVal'),
+    saturation: document.getElementById('saturationVal'),
+    hue: document.getElementById('hueVal'),
+    grayscale: document.getElementById('grayscaleVal'),
+    sepia: document.getElementById('sepiaVal'),
+    invert: document.getElementById('invertVal'),
+    resolution: document.getElementById('resVal'),
+    threshold: document.getElementById('thresholdVal'),
+    padding: document.getElementById('paddingVal')
+  };
+
+  const RAMPS = {
+    normal:   ' .:-=+*#%@',
+    minimal:  ' .:+*#',
+    numeric:  ' .:-=+*890',
+    block:    ' \u2591\u2592\u2593\u2588',
+    codepage: ' .,:;+*?%S#@',
+    mathsym:  ' .\u00b7:+\u00d7*#\u00a7@'
+  };
+
+  let img = null;
+  let mode = 'mono';
+  let plainText = '';
+  let grid = null; // {cw,ch,chars:[[]],colors:[[]]}
+
+  // Monospace glyphs aren't all the same width: Latin/symbol characters are "narrow",
+  // but Hangul and other CJK characters render roughly twice as wide in monospace fonts.
+  // If we assumed a narrow-glyph ratio while the user typed a Korean word, every row
+  // would end up rendered far wider than sampled -> the stretched-looking result the
+  // user saw. So we measure the actual widest glyph in the *currently used* character
+  // set each time we render, and use that real ratio for both row-count math and PNG export.
+  // Monospace glyphs aren't all the same width: Latin/symbol characters are "narrow",
+  // but Hangul and other CJK characters render roughly twice as wide in monospace fonts.
+  // Measuring this via an offscreen <canvas> context is unreliable because the browser
+  // can silently substitute a *different* actual font for canvas text than it uses for
+  // the visible page (especially for CJK glyphs), which produced the previous over/under
+  // correction. Instead we measure with a hidden DOM element using the exact same
+  // font-family as the visible #output element, so the ratio always matches what is
+  // actually on screen.
+  const aspectProbe = document.createElement('span');
+  aspectProbe.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;pointer-events:none;left:-99999px;top:0;font-family:monospace;font-size:200px;line-height:1;';
+  document.body.appendChild(aspectProbe);
+  function measureCharAspect(chars){
+    let maxRatio = 0;
+    for(const c of chars){
+      if(c === ' ') continue;
+      aspectProbe.textContent = c.repeat(8);
+      const w = aspectProbe.getBoundingClientRect().width / 8;
+      const ratio = w / 200;
+      if(ratio > maxRatio) maxRatio = ratio;
+    }
+    if(maxRatio === 0){
+      aspectProbe.textContent = '0'.repeat(8);
+      maxRatio = (aspectProbe.getBoundingClientRect().width / 8) / 200;
+    }
+    return maxRatio;
+  }
+  let CHAR_ASPECT = measureCharAspect(['0']);
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', {willReadFrequently:true});
+
+  // ---------- file loading ----------
+  function loadFile(file){
+    if(!file || !file.type.startsWith('image/')) return;
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = ()=>{
+      img = im;
+      thumbImg.src = url;
+      thumbName.textContent = file.name.length>18 ? file.name.slice(0,15)+'…' : file.name;
+      thumb.style.display='flex';
+      render();
+    };
+    im.src = url;
+  }
+  fileInput.addEventListener('change', e=> loadFile(e.target.files[0]));
+  dropzone.addEventListener('click', ()=> fileInput.click());
+  ['dragover','dragenter'].forEach(ev=> dropzone.addEventListener(ev, e=>{e.preventDefault(); dropzone.classList.add('drag');}));
+  ['dragleave','drop'].forEach(ev=> dropzone.addEventListener(ev, e=>{e.preventDefault(); dropzone.classList.remove('drag');}));
+  dropzone.addEventListener('drop', e=>{
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    loadFile(f);
+  });
+
+  // ---------- controls ----------
+  document.querySelectorAll('input[name=mode]').forEach(r=>{
+    r.addEventListener('change', ()=>{
+      mode = r.value;
+      tintRow.style.display = (mode==='tint') ? 'block' : 'none';
+      render();
+    });
+  });
+  document.querySelectorAll('input[name=bg]').forEach(r=>{
+    r.addEventListener('change', ()=>{
+      bgColor.style.display = (r.value==='custom') ? 'inline-block' : 'none';
+    });
+  });
+  tintColor.addEventListener('input', render);
+
+  gradientPreset.addEventListener('change', ()=>{
+    const isCustom = gradientPreset.value === 'custom';
+    customTextField.style.display = isCustom ? 'block' : 'none';
+    thresholdField.style.display = isCustom ? 'block' : 'none';
+    render();
+  });
+
+  let t=null;
+  function debouncedRender(){ clearTimeout(t); t=setTimeout(render, 60); }
+  [brightness,contrast,saturation,hue,grayscale,sepia,invert,resolution,threshold,paddingSlider].forEach(sl=>{
+    sl.addEventListener('input', ()=>{
+      if(valSpans[sl.id]) valSpans[sl.id].textContent = sl.value;
+      debouncedRender();
+    });
+  });
+  ditherSelect.addEventListener('change', render);
+  textInput.addEventListener('input', debouncedRender);
+
+  // ---------- color adjustment helpers ----------
+  function rgbToHsl(r,g,b){
+    r/=255; g/=255; b/=255;
+    const max=Math.max(r,g,b), min=Math.min(r,g,b);
+    let h=0,s=0,l=(max+min)/2;
+    if(max!==min){
+      const d=max-min;
+      s = l>0.5 ? d/(2-max-min) : d/(max+min);
+      switch(max){
+        case r: h=(g-b)/d + (g<b?6:0); break;
+        case g: h=(b-r)/d + 2; break;
+        case b: h=(r-g)/d + 4; break;
+      }
+      h/=6;
+    }
+    return [h,s,l];
+  }
+  function hslToRgb(h,s,l){
+    let r,g,b;
+    if(s===0){ r=g=b=l; }
+    else{
+      const hue2rgb=(p,q,t)=>{
+        if(t<0)t+=1; if(t>1)t-=1;
+        if(t<1/6) return p+(q-p)*6*t;
+        if(t<1/2) return q;
+        if(t<2/3) return p+(q-p)*(2/3-t)*6;
+        return p;
+      };
+      const q = l<0.5 ? l*(1+s) : l+s-l*s;
+      const p = 2*l-q;
+      r=hue2rgb(p,q,h+1/3);
+      g=hue2rgb(p,q,h);
+      b=hue2rgb(p,q,h-1/3);
+    }
+    return [r*255,g*255,b*255];
+  }
+
+  function span(color, text){
+    const esc = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return color ? `<span style="color:${color}">${esc}</span>` : esc;
+  }
+  function hexToRgb(hex){
+    const m = hex.replace('#','');
+    const bigint = parseInt(m,16);
+    return { r:(bigint>>16)&255, g:(bigint>>8)&255, b:bigint&255 };
+  }
+  function contrastColor(hex){
+    const {r,g,b} = hexToRgb(hex);
+    const lum = (r*299+g*587+b*114)/1000;
+    return lum > 150 ? '#000000' : '#ffffff';
+  }
+
+  // ---------- core render ----------
+  function render(){
+    if(!img) return;
+
+    const preset = gradientPreset.value;
+    const isCustom = preset === 'custom';
+    const rampStr = isCustom ? null : RAMPS[preset];
+    const seq = (textInput.value || '#').split('').filter(c=>c.length);
+    const customChars = seq.length ? seq : ['#'];
+
+    // the glyph-width ratio must reflect whatever characters will actually be drawn,
+    // otherwise wide glyphs (e.g. Hangul) make every row render far too wide.
+    CHAR_ASPECT = measureCharAspect(isCustom ? customChars : rampStr.split(''));
+
+    const cw = +resolution.value;
+    const ch = Math.max(1, Math.round(img.height/img.width * cw * CHAR_ASPECT));
+    canvas.width = cw; canvas.height = ch;
+    ctx.clearRect(0,0,cw,ch);
+    ctx.drawImage(img, 0, 0, cw, ch);
+    const data = ctx.getImageData(0,0,cw,ch).data;
+
+    const bAdj = +brightness.value;
+    const cAdjRaw = +contrast.value;
+    const cFactor = (259*(cAdjRaw+255)) / (255*(259-cAdjRaw));
+    const satAdj = (+saturation.value)/100;
+    const hueAdj = (+hue.value)/360;
+    const grayAdj = (+grayscale.value)/100;
+    const sepiaAdj = (+sepia.value)/100;
+    const invertAdj = (+invert.value)/100;
+    const thresh = +threshold.value;
+    const useDither = ditherSelect.value === 'floyd';
+    const pad = +paddingSlider.value;
+
+    const useColor = (mode==='color');
+    const useTint = (mode==='tint');
+    const tintRGB = hexToRgb(tintColor.value);
+
+    // pass 1: compute adjusted rgb + luminance grid (needed up front for dithering diffusion)
+    const lumGrid = new Float32Array(cw*ch);
+    const rGrid = new Uint8ClampedArray(cw*ch);
+    const gGrid = new Uint8ClampedArray(cw*ch);
+    const bGrid = new Uint8ClampedArray(cw*ch);
+    const alphaGrid = new Uint8ClampedArray(cw*ch);
+
+    for(let y=0;y<ch;y++){
+      for(let x=0;x<cw;x++){
+        const idx = y*cw+x;
+        const i = idx*4;
+        let r=data[i], g=data[i+1], b=data[i+2], a=data[i+3];
+
+        if(hueAdj!==0 || satAdj!==1){
+          let [h,s,l] = rgbToHsl(r,g,b);
+          h = (h + hueAdj + 1) % 1;
+          s = Math.max(0, Math.min(1, s*satAdj));
+          [r,g,b] = hslToRgb(h,s,l);
+        }
+        if(grayAdj>0){
+          const gv = 0.299*r+0.587*g+0.114*b;
+          r = r*(1-grayAdj)+gv*grayAdj;
+          g = g*(1-grayAdj)+gv*grayAdj;
+          b = b*(1-grayAdj)+gv*grayAdj;
+        }
+        if(sepiaAdj>0){
+          const sr = Math.min(255, 0.393*r+0.769*g+0.189*b);
+          const sg = Math.min(255, 0.349*r+0.686*g+0.168*b);
+          const sb = Math.min(255, 0.272*r+0.534*g+0.131*b);
+          r = r*(1-sepiaAdj)+sr*sepiaAdj;
+          g = g*(1-sepiaAdj)+sg*sepiaAdj;
+          b = b*(1-sepiaAdj)+sb*sepiaAdj;
+        }
+        if(invertAdj>0){
+          r = r*(1-invertAdj) + (255-r)*invertAdj;
+          g = g*(1-invertAdj) + (255-g)*invertAdj;
+          b = b*(1-invertAdj) + (255-b)*invertAdj;
+        }
+
+        let lum = (r+g+b)/3;
+        lum = cFactor*(lum-128) + 128 + bAdj;
+        lum = Math.max(0, Math.min(255, lum));
+
+        rGrid[idx]=r; gGrid[idx]=g; bGrid[idx]=b; alphaGrid[idx]=a;
+        lumGrid[idx] = lum;
+      }
+    }
+
+    // optional Floyd-Steinberg dithering on the luminance channel (classic 2-level diffusion)
+    if(useDither){
+      for(let y=0;y<ch;y++){
+        for(let x=0;x<cw;x++){
+          const idx = y*cw+x;
+          const old = lumGrid[idx];
+          const q = old < 128 ? 0 : 255;
+          const err = old - q;
+          lumGrid[idx] = q;
+          if(x+1<cw) lumGrid[idx+1] += err*7/16;
+          if(x-1>=0 && y+1<ch) lumGrid[idx-1+cw] += err*3/16;
+          if(y+1<ch) lumGrid[idx+cw] += err*5/16;
+          if(x+1<cw && y+1<ch) lumGrid[idx+1+cw] += err*1/16;
+        }
+      }
+    }
+
+    let k = 0;
+    let plainRows = [];
+    let htmlRows = (useColor||useTint) ? [] : null;
+    const charGrid = [];
+    const colorGrid = [];
+
+    for(let y=0;y<ch;y++){
+      let plainRow = '';
+      let htmlRow = '';
+      let curColor = null, curBuf = '';
+      const charRow = [];
+      const colorRow = [];
+      for(let x=0;x<cw;x++){
+        const idx = y*cw+x;
+        const a = alphaGrid[idx];
+        const lum = lumGrid[idx];
+        let ch1 = ' ';
+        let color = null;
+        let visible = false;
+
+        if(a >= 40){
+          if(isCustom){
+            visible = lum < thresh;
+            if(visible){ ch1 = customChars[k % customChars.length]; k++; }
+          } else {
+            const rampIdx = Math.round(((255-lum)/255) * (rampStr.length-1));
+            ch1 = rampStr[rampIdx];
+            visible = ch1 !== ' ';
+          }
+          if(visible){
+            if(useColor){
+              color = `rgb(${rGrid[idx]},${gGrid[idx]},${bGrid[idx]})`;
+            } else if(useTint){
+              const mix = lum/255;
+              const rr = Math.round(tintRGB.r*(1-mix));
+              const gg = Math.round(tintRGB.g*(1-mix));
+              const bb = Math.round(tintRGB.b*(1-mix));
+              color = `rgb(${rr},${gg},${bb})`;
+            }
+          }
+        }
+        plainRow += ch1;
+        charRow.push(ch1);
+        colorRow.push(color);
+        if(htmlRows){
+          if(color !== curColor){
+            if(curBuf) htmlRow += span(curColor, curBuf);
+            curColor = color; curBuf = ch1;
+          } else {
+            curBuf += ch1;
+          }
+        }
+      }
+      if(htmlRows){
+        if(curBuf) htmlRow += span(curColor, curBuf);
+        htmlRows.push(htmlRow);
+      }
+      plainRows.push(plainRow);
+      charGrid.push(charRow);
+      colorGrid.push(colorRow);
+    }
+
+    // frame padding
+    if(pad>0){
+      const padRow = ' '.repeat(cw + pad*2);
+      const padded = [];
+      for(let i=0;i<pad;i++) padded.push(padRow);
+      for(let y=0;y<ch;y++) padded.push(' '.repeat(pad) + plainRows[y] + ' '.repeat(pad));
+      for(let i=0;i<pad;i++) padded.push(padRow);
+      plainRows = padded;
+
+      if(htmlRows){
+        const padded2 = [];
+        for(let i=0;i<pad;i++) padded2.push(padRow);
+        for(let y=0;y<ch;y++) padded2.push(' '.repeat(pad) + htmlRows[y] + ' '.repeat(pad));
+        for(let i=0;i<pad;i++) padded2.push(padRow);
+        htmlRows = padded2;
+      }
+      // pad the char/color grids too, so PNG export matches
+      const emptyRow = new Array(cw + pad*2).fill(' ');
+      const emptyColorRow = new Array(cw + pad*2).fill(null);
+      const paddedChars = [];
+      const paddedColors = [];
+      for(let i=0;i<pad;i++){ paddedChars.push(emptyRow.slice()); paddedColors.push(emptyColorRow.slice()); }
+      for(let y=0;y<ch;y++){
+        paddedChars.push(new Array(pad).fill(' ').concat(charGrid[y], new Array(pad).fill(' ')));
+        paddedColors.push(new Array(pad).fill(null).concat(colorGrid[y], new Array(pad).fill(null)));
+      }
+      for(let i=0;i<pad;i++){ paddedChars.push(emptyRow.slice()); paddedColors.push(emptyColorRow.slice()); }
+      grid = {cw: cw+pad*2, ch: ch+pad*2, chars: paddedChars, colors: paddedColors};
+    } else {
+      grid = {cw, ch, chars:charGrid, colors:colorGrid};
+    }
+
+    plainText = plainRows.join('\n') + '\n';
+
+    if(htmlRows){
+      output.innerHTML = htmlRows.join('\n');
+    } else {
+      output.textContent = plainText;
+    }
+
+    emptyMsg.style.display = 'none';
+    output.style.display = 'block';
+    fitToContainer();
+  }
+
+  function fitToContainer(){
+    output.style.transform = 'none';
+    output.style.fontSize = '14px';
+    output.style.lineHeight = '1';
+    const boxW = canvasArea.clientWidth - 16;
+    const boxH = canvasArea.clientHeight - 16;
+    const naturalW = output.scrollWidth;
+    const naturalH = output.scrollHeight;
+    const scale = Math.min(boxW/naturalW, boxH/naturalH, 6);
+    output.style.transform = `scale(${scale})`;
+    zoomTag.textContent = `${Math.round(scale*100)}%`;
+  }
+  window.addEventListener('resize', ()=> img && fitToContainer());
+
+  // ---------- copy / save txt ----------
+  document.getElementById('copyBtn').addEventListener('click', async ()=>{
+    if(!plainText) return;
+    try{
+      await navigator.clipboard.writeText(plainText);
+      toast(document.getElementById('copyBtn'), '복사됨');
+    }catch(e){
+      const ta = document.createElement('textarea');
+      ta.value = plainText; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      toast(document.getElementById('copyBtn'), '복사됨');
+    }
+  });
+  document.getElementById('saveTxtBtn').addEventListener('click', ()=>{
+    if(!plainText) return;
+    const blob = new Blob([plainText], {type:'text/plain;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'ascii_art.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast(document.getElementById('saveTxtBtn'), '저장됨');
+  });
+
+  // ---------- save png (same char aspect as on-screen preview -> no squish) ----------
+  document.getElementById('savePngBtn').addEventListener('click', ()=>{
+    if(!grid) return;
+    const bgChoice = document.querySelector('input[name=bg]:checked').value;
+    let bg = null;
+    if(bgChoice==='white') bg = '#ffffff';
+    else if(bgChoice==='black') bg = '#000000';
+    else if(bgChoice==='custom') bg = bgColor.value;
+    // transparent -> bg stays null
+
+    const fontSize = 16;
+    const charW = fontSize * CHAR_ASPECT;
+    const lineH = fontSize;
+    const padding = 12;
+    const outCanvas = document.createElement('canvas');
+    outCanvas.width = Math.ceil(grid.cw * charW) + padding*2;
+    outCanvas.height = Math.ceil(grid.ch * lineH) + padding*2;
+    const octx = outCanvas.getContext('2d');
+
+    if(bg){
+      octx.fillStyle = bg;
+      octx.fillRect(0,0,outCanvas.width, outCanvas.height);
+    }
+
+    const defaultTextColor = bg ? contrastColor(bg) : '#000000';
+    octx.font = `${fontSize}px monospace`;
+    octx.textBaseline = 'top';
+
+    for(let y=0;y<grid.ch;y++){
+      for(let x=0;x<grid.cw;x++){
+        const c = grid.chars[y][x];
+        if(c===' '||c==='') continue;
+        const col = grid.colors[y][x] || defaultTextColor;
+        octx.fillStyle = col;
+        octx.fillText(c, padding + x*charW, padding + y*lineH);
+      }
+    }
+
+    outCanvas.toBlob(blob=>{
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'ascii_art.png';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast(document.getElementById('savePngBtn'), 'PNG 저장됨');
+    }, 'image/png');
+  });
+
+  // ---------- reset ----------
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    brightness.value=0; contrast.value=0; saturation.value=100; hue.value=0;
+    grayscale.value=0; sepia.value=0; invert.value=0; resolution.value=100;
+    threshold.value=128; paddingSlider.value=0;
+    Object.keys(valSpans).forEach(k=>{
+      const el = document.getElementById(k);
+      if(el) valSpans[k].textContent = el.value;
+    });
+    gradientPreset.value='custom';
+    customTextField.style.display='block';
+    thresholdField.style.display='block';
+    textInput.value='#@*.:';
+    ditherSelect.value='none';
+    document.querySelector('input[name=mode][value=mono]').checked = true;
+    mode='mono';
+    tintRow.style.display='none';
+    document.querySelector('input[name=bg][value=white]').checked = true;
+    bgColor.style.display='none';
+    render();
+  });
+
+  function toast(btn, msg){
+    const original = btn.textContent;
+    btn.textContent = msg;
+    setTimeout(()=> btn.textContent = original, 1200);
+  }
+})();
+</script>
+</body>
+</html>
